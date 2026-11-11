@@ -13,7 +13,7 @@ from pydantic import AnyHttpUrl, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s QBITCLEANER %(message)s"
+    level=logging.INFO, format="%(asctime)s %(levelname)s QBitCleaner %(message)s"
 )
 
 logging.getLogger("httpx2").setLevel(logging.WARNING)
@@ -148,9 +148,7 @@ def main() -> int:
 
     with make_client(settings) as client:
         logger.debug("Testing connection to qbittorrent instance...")
-        logger.info(
-            f"QBitCleaner Connected to qbittorrent {get_version(logger, client)}"
-        )
+        logger.info(f"connected to qbittorrent {get_version(logger, client)}")
         while not stop.is_set():
             main_loop(logger, client, settings, stop)
             stop.wait(settings.interval)
