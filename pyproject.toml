@@ -1,0 +1,20 @@
+[project]
+name = "docker-mod-qbit-cleaner"
+version = "0.1.0"
+description = "Small utility to free disc space under qbittorrent instance"
+readme = "README.md"
+authors = [
+    { name = "maresyp", email = "maresyp.dev@gmail.com" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "httpx2>=2.16.0",
+    "pydantic-settings>=2.16.1",
+]
+
+[project.scripts]
+docker-mod-qbit-cleaner = "docker_mod_qbit_cleaner:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
