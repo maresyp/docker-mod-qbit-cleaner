@@ -16,6 +16,9 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s QBITCLEANER %(message)s"
 )
 
+logging.getLogger("httpx2").setLevel(logging.WARNING)
+logging.getLogger("httpcore2").setLevel(logging.WARNING)
+
 GB = 1024**3
 SETTLE_SECONDS = 10
 
