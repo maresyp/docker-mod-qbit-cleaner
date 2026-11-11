@@ -12,9 +12,21 @@ dependencies = [
     "pydantic-settings>=2.16.1",
 ]
 
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
 [project.scripts]
 docker-mod-qbit-cleaner = "docker_mod_qbit_cleaner:main"
 
 [build-system]
 requires = ["uv_build>=0.12.15,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["root/opt/qbit-cleaner"]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["integration: needs a container engine and network access"]
