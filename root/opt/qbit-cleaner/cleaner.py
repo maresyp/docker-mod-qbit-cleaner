@@ -1,8 +1,11 @@
+# /// script
+# requires-python = ">=3.14,<3.15"
+# dependencies = ["httpx2>=2.15,<3", "pydantic>=2.10", "pydantic-settings>=2.7,<3"]
+# ///
 import logging
 import signal
 import sys
 import threading
-from tkinter import mainloop
 from typing import Annotated, Literal
 
 import httpx2 as httpx
@@ -13,7 +16,11 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s QBITCLEANER %(message)s"
 )
 
+logging.getLogger("httpx2").setLevel(logging.WARNING)
+logging.getLogger("httpcore2").setLevel(logging.WARNING)
+
 GB = 1024**3
+SETTLE_SECONDS = 10
 
 
 class Settings(BaseSettings):
@@ -28,12 +35,18 @@ class Settings(BaseSettings):
 
     min_gb: Annotated[float, Field(ge=1)] = 1
     interval: int = 15
-    dry_run: bool = True
+    dry_run: bool = False
+
+
+def make_client(settings: Settings, **kwargs) -> httpx.Client:
+    return httpx.Client(
+        base_url=str(settings.host).rstrip("/") + "/api/v2", timeout=10, **kwargs
+    )
 
 
 def get_free_space(logger: logging.Logger, client: httpx.Client) -> int:
     logger.debug("Getting free space info...")
-    return int(  # TODO: check return and calculate proper GB
+    return int(
         client.request("GET", "/sync/maindata")
         .raise_for_status()
         .json()["server_state"]["free_space_on_disk"]
@@ -49,11 +62,11 @@ def get_torrents(
     logger: logging.Logger,
     client: httpx.Client,
     settings: Settings,
-):  # TODO add return type
+) -> list[dict]:
     logger.debug("Getting torrents...")
     params = {"filter": "completed", "sort": "added_on"}
     return (
-        client.request("GET", "/torrents/info", data=params).raise_for_status().json()
+        client.request("GET", "/torrents/info", params=params).raise_for_status().json()
     )
 
 
@@ -87,16 +100,24 @@ def main_loop(
     logger: logging.Logger,
     client: httpx.Client,
     settings: Settings,
+    stop: threading.Event,
 ) -> None:
+    minimum = settings.min_gb * GB
     free = get_free_space(logger, client)
-    if free >= settings.min_gb:
+    if free >= minimum:
         return
+    logger.warning(
+        "low disk space: %.1f GB free, minimum is %.1f GB", free / GB, settings.min_gb
+    )
 
     candidates = get_torrents(logger, client, settings)
     if not candidates:
         logger.warning("No torrents eligible to delete... might run out of space :(")
+        return
 
     for t in candidates:
+        if free >= minimum or stop.is_set():
+            break
         logger.info(
             "%s %s (%.1f GB)",
             "would delete" if settings.dry_run else "deleting",
@@ -104,26 +125,34 @@ def main_loop(
             t["size"] / GB,
         )
         if settings.dry_run:
-            logger.warning("Dry run enabled in settings - not deleting anything.")
-            return
+            free += t["size"]  # estimate only
+            continue
+        delete_torrent(logger, client, settings, t["hash"])
+        if stop.wait(SETTLE_SECONDS):
+            break
+        free = get_free_space(logger, client)
+
+    if settings.dry_run:
+        logger.warning("Dry run enabled in settings - not deleting anything.")
 
 
 def main() -> int:
     logger = logging.getLogger("qbit-cleaner")
 
-    logger.info("Starting...")
+    logger.debug("Starting...")
     stop = set_stop_on_signal(logger)
 
     logger.debug("Loading settings from enviorment...")
     settings = Settings()
+    logging.getLogger().setLevel(settings.log_level)
 
-    with httpx.Client(
-        base_url=str(settings.host).rstrip("/" + "/api/v2"), timeout=10
-    ) as client:
+    with make_client(settings) as client:
         logger.debug("Testing connection to qbittorrent instance...")
-        logger.info(f"Running on {get_version(logger, client)}")
+        logger.info(
+            f"QBitCleaner Connected to qbittorrent {get_version(logger, client)}"
+        )
         while not stop.is_set():
-            main_loop(logger, client, settings)
+            main_loop(logger, client, settings, stop)
             stop.wait(settings.interval)
 
     return 0

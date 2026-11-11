@@ -1,0 +1,24 @@
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:5.2.4
+    container_name: qbit-mod-test
+    environment:
+      #- S6_VERBOSITY=5
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - WEBUI_PORT=8080
+      - DOCKER_MODS=ghcr.io/maresyp/docker-mod-qbit-cleaner:develop
+      - QBIT_CLEANER_DRY_RUN=false
+      - QBIT_CLEANER_MIN_GB=1000000   # forces a sweep; testing only
+      - QBIT_CLEANER_INTERVAL=15
+      - QBIT_CLEANER_LOG_LEVEL=INFO
+    ports:
+      - 127.0.0.1:8080:8080
+    volumes:
+      - config:/config
+      - downloads:/downloads
+
+volumes:
+  config:
+  downloads:

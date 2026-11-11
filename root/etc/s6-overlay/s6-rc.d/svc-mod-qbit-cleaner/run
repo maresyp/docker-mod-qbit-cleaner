@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv bash
+sleep 15   # let qBittorrent come up; also throttles restarts after a crash
+export UV_CACHE_DIR=/config/.uv-cache UV_PYTHON_INSTALL_DIR=/config/.uv-python
+exec s6-setuidgid abc /usr/local/bin/uv run --script /opt/qbit-cleaner/cleaner.py
