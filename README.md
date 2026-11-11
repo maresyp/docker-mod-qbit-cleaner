@@ -23,7 +23,7 @@ services:
     image: lscr.io/linuxserver/qbittorrent:5.2.4
     environment:
       - DOCKER_MODS=ghcr.io/maresyp/docker-mod-qbit-cleaner:latest
-      - QBIT_CLEANER_HOST=http=localhost:8080
+      - QBIT_CLEANER_HOST=http://localhost:8080
       - QBIT_CLEANER_MIN_GB=10
       - QBIT_CLEANER_INTERVAL=60
       - QBIT_CLEANER_DRY_RUN=true
